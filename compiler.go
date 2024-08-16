@@ -54,11 +54,30 @@ func tokenizer(input string) ([]token, error) {
 				current++
 				char = string([]rune(input)[current])
 			}
-			tokens = append(tokens, token{kind: "name", value: value})
+
+			if value == "true" || value == "false" {
+				tokens = append(tokens, token{kind: "boolean", value: value})
+			} else {
+				tokens = append(tokens, token{kind: "name", value: value})
+			}
 			continue
 		}
 
-		// Error handling for unexpected characters
+		if char == `"` {
+			value := ""
+			current++
+			char = string([]rune(input)[current])
+
+			for char != `"` {
+				value += char
+				current++
+				char = string([]rune(input)[current])
+			}
+			tokens = append(tokens, token{kind: "string", value: value})
+			current++
+			continue
+		}
+
 		return nil, fmt.Errorf("unexpected character: %s at position %d", char, current)
 	}
 
@@ -70,10 +89,7 @@ func isNumber(char string) bool {
 		return false
 	}
 	n := []rune(char)[0]
-	if n >= '0' && n <= '9' {
-		return true
-	}
-	return false
+	return n >= '0' && n <= '9'
 }
 
 func isLetter(char string) bool {
@@ -81,11 +97,9 @@ func isLetter(char string) bool {
 		return false
 	}
 	n := []rune(char)[0]
-	if n >= 'a' && n <= 'z' {
-		return true
-	}
-	return false
+	return (n >= 'a' && n <= 'z') || (n >= 'A' && n <= 'Z')
 }
+
 type node struct {
 	kind       string
 	value      string
@@ -99,20 +113,24 @@ type node struct {
 }
 
 type ast node
+
 var pc int
 var pt []token
 
-func parser(tokens []token) ast {
+func parser(tokens []token) (ast, error) {
 	pc = 0
 	pt = tokens
-	ast := ast{
-		kind: "Program",
-		body: []node{},
-	}
+	ast := ast{kind: "Program", body: []node{}}
+
 	for pc < len(pt) {
-		ast.body = append(ast.body, walk())
+		n, err := walk()
+		if err != nil {
+			return ast, err
+		}
+		ast.body = append(ast.body, n)
 	}
-	return ast
+
+	return ast, nil
 }
 
 func walk() (node, error) {
@@ -121,6 +139,16 @@ func walk() (node, error) {
 	if token.kind == "number" {
 		pc++
 		return node{kind: "NumberLiteral", value: token.value}, nil
+	}
+
+	if token.kind == "string" {
+		pc++
+		return node{kind: "StringLiteral", value: token.value}, nil
+	}
+
+	if token.kind == "boolean" {
+		pc++
+		return node{kind: "BooleanLiteral", value: token.value}, nil
 	}
 
 	if token.kind == "paren" && token.value == "(" {
@@ -152,50 +180,40 @@ type visitor map[string]func(n *node, p node)
 func traverser(a ast, v visitor) {
 	traverseNode(node(a), node{}, v)
 }
+
 func traverseArray(a []node, p node, v visitor) {
 	for _, child := range a {
 		traverseNode(child, p, v)
 	}
 }
+
 func traverseNode(n, p node, v visitor) {
-	for k, va := range v {
-		if k == n.kind {
-			va(&n, p)
-		}
+	if va, ok := v[n.kind]; ok {
+		va(&n, p)
 	}
 
 	switch n.kind {
 	case "Program":
 		traverseArray(n.body, n, v)
-		break
 	case "CallExpression":
 		traverseArray(n.params, n, v)
-		break
-
-	case "NumberLiteral":
-		break
-
-	default:
-		log.Fatal(n.kind)
 	}
 }
+
 func transformer(a ast) ast {
-
-	nast := ast{
-		kind: "Program",
-		body: []node{},
-	}
-
+	nast := ast{kind: "Program", body: []node{}}
 	a.context = &nast.body
+
 	traverser(a, map[string]func(n *node, p node){
-
 		"NumberLiteral": func(n *node, p node) {
-			*p.context = append(*p.context, node{
-				kind:  "NumberLiteral",
-				value: n.value,
-			})
+			*p.context = append(*p.context, node{kind: "NumberLiteral", value: n.value})
 		},
-
+		"StringLiteral": func(n *node, p node) {
+			*p.context = append(*p.context, node{kind: "StringLiteral", value: n.value})
+		},
+		"BooleanLiteral": func(n *node, p node) {
+			*p.context = append(*p.context, node{kind: "BooleanLiteral", value: n.value})
+		},
 		"CallExpression": func(n *node, p node) {
 			e := node{
 				kind: "CallExpression",
@@ -215,14 +233,13 @@ func transformer(a ast) ast {
 			} else {
 				*p.context = append(*p.context, e)
 			}
-
 		},
 	})
+
 	return nast
 }
 
 func codeGenerator(n node) string {
-
 	switch n.kind {
 	case "Program":
 		var r []string
@@ -235,29 +252,23 @@ func codeGenerator(n node) string {
 	case "CallExpression":
 		var ra []string
 		c := codeGenerator(*n.callee)
-
 		for _, no := range *n.arguments {
 			ra = append(ra, codeGenerator(no))
 		}
-
-		r := strings.Join(ra, ", ")
-		return c + "(" + r + ")"
+		return c + "(" + strings.Join(ra, ", ") + ")"
 	case "Identifier":
 		return n.name
 	case "NumberLiteral":
 		return n.value
+	case "StringLiteral":
+		return `"` + n.value + `"`
+	case "BooleanLiteral":
+		return n.value
 	default:
-		log.Fatal("err")
+		log.Fatal("unknown node kind")
 		return ""
 	}
 }
-
-/**
- *   1. input  => tokenizer   => tokens
- *   2. tokens => parser      => ast
- *   3. ast    => transformer => newAst
- *   4. newAst => generator   => output
- */
 
 func compiler(input string) (string, error) {
 	tokens, err := tokenizer(input)
@@ -274,7 +285,10 @@ func compiler(input string) (string, error) {
 }
 
 func main() {
-	program := "(add 10 (subtract 10 6))"
-	out := compiler(program)
+	program := `(add "hello" (subtract 10 true))`
+	out, err := compiler(program)
+	if err != nil {
+		log.Fatalf("Compilation error: %v", err)
+	}
 	fmt.Println(out)
 }
