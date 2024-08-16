@@ -331,7 +331,8 @@ func compiler(input string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	nast := transformer(ast)
+	optimizedAst := optimize(ast)
+	nast := transformer(optimizedAst)
 	out := codeGenerator(node(nast))
 	return out, nil
 }
