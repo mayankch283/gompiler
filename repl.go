@@ -1,5 +1,14 @@
 package main
 
+/*
+---Work-In-Progress---
+---Features to add---
+1. Multiline Input
+2. Command History
+3. Syntax Highlighting
+4. Support for Variables/Functions
+*/
+
 import (
 	"bufio"
 	"fmt"
