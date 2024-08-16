@@ -1,5 +1,15 @@
 package main
 
+/*
+More optimzation techniques which can be added in future:
+1. Common Subexpression Elimination
+2. Loop Unrolling
+3. Tail Call Optimization
+4. Peephole Optimizations
+*/
+
+/* NOTE: remember to balance the trade-off between compilation time and runtime performance when adding more optimization passes */
+
 import (
 	"fmt"
 	"strconv"
