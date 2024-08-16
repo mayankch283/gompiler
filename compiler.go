@@ -64,6 +64,7 @@ func tokenizer(input string) ([]token, error) {
 
 	return tokens, nil
 }
+
 func isNumber(char string) bool {
 	if char == "" {
 		return false
@@ -97,10 +98,10 @@ type node struct {
 	context    *[]node
 }
 
-
 type ast node
 var pc int
 var pt []token
+
 func parser(tokens []token) ast {
 	pc = 0
 	pt = tokens
@@ -113,46 +114,39 @@ func parser(tokens []token) ast {
 	}
 	return ast
 }
-func walk() node {
+
+func walk() (node, error) {
 	token := pt[pc]
 
 	if token.kind == "number" {
 		pc++
-		return node{
-			kind:  "NumberLiteral",
-			value: token.value,
-		}
+		return node{kind: "NumberLiteral", value: token.value}, nil
 	}
 
-	
 	if token.kind == "paren" && token.value == "(" {
-
 		pc++
 		token = pt[pc]
 
-		
-		n := node{
-			kind:   "CallExpression",
-			name:   token.value,
-			params: []node{},
-		}
-
+		n := node{kind: "CallExpression", name: token.value, params: []node{}}
 		pc++
 		token = pt[pc]
 
-		
 		for token.kind != "paren" || (token.kind == "paren" && token.value != ")") {
-			n.params = append(n.params, walk())
+			param, err := walk()
+			if err != nil {
+				return node{}, err
+			}
+			n.params = append(n.params, param)
 			token = pt[pc]
 		}
 
 		pc++
-
-		return n
+		return n, nil
 	}
-	log.Fatal(token.kind)
-	return node{}
+
+	return node{}, fmt.Errorf("unexpected token: %s", token.kind)
 }
+
 type visitor map[string]func(n *node, p node)
 
 func traverser(a ast, v visitor) {
