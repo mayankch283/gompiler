@@ -11,47 +11,59 @@ type token struct {
 	value string
 }
 
-func tokenizer(input string) []token {
-    input += "\n"
-    runes := []rune(input)
-    current := 0
-    tokens := []token{}
+func tokenizer(input string) ([]token, error) {
+	input += "\n"
+	current := 0
+	tokens := []token{}
 
-    for current < len(runes) {
-        char := runes[current]
-        switch char {
-        case '(':
-            tokens = append(tokens, token{"paren", "("})
-        case ')':
-            tokens = append(tokens, token{"paren", ")"})
-        case ' ':
-            // Skip whitespace
-        case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-            value := ""
-            for current < len(runes) && isNumber(runes[current]) {
-                value += string(runes[current])
-                current++
-            }
-            tokens = append(tokens, token{"number", value})
-            continue // Skip current increment as loop already increments
-        default:
-            if isLetter(char) {
-                value := ""
-                for current < len(runes) && isLetter(runes[current]) {
-                    value += string(runes[current])
-                    current++
-                }
-                tokens = append(tokens, token{"name", value})
-                continue // Skip current increment as loop already increments
-            }
-            log.Fatalf("Unexpected character: %c", char)
-        }
-        current++
-    }
+	for current < len([]rune(input)) {
+		char := string([]rune(input)[current])
 
-    return tokens
+		if char == "(" {
+			tokens = append(tokens, token{kind: "paren", value: "("})
+			current++
+			continue
+		}
+
+		if char == ")" {
+			tokens = append(tokens, token{kind: "paren", value: ")"})
+			current++
+			continue
+		}
+
+		if char == " " {
+			current++
+			continue
+		}
+
+		if isNumber(char) {
+			value := ""
+			for isNumber(char) {
+				value += char
+				current++
+				char = string([]rune(input)[current])
+			}
+			tokens = append(tokens, token{kind: "number", value: value})
+			continue
+		}
+
+		if isLetter(char) {
+			value := ""
+			for isLetter(char) {
+				value += char
+				current++
+				char = string([]rune(input)[current])
+			}
+			tokens = append(tokens, token{kind: "name", value: value})
+			continue
+		}
+
+		// Error handling for unexpected characters
+		return nil, fmt.Errorf("unexpected character: %s at position %d", char, current)
+	}
+
+	return tokens, nil
 }
-
 func isNumber(char string) bool {
 	if char == "" {
 		return false
