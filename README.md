@@ -1,0 +1,8 @@
+- [x] Add tests
+- [ ] Add docs
+- [ ] Support for More Data Types
+- [ ] Error Handling
+- [ ] Interactive REPL
+- [ ] Optimization Passes
+- [ ] Debugging Information
+- [ ] Extensible Parser
