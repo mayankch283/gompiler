@@ -78,6 +78,12 @@ func tokenizer(input string) ([]token, error) {
 			continue
 		}
 
+		if char == "+" || char == "-" || char == "*" || char == "/" {
+			tokens = append(tokens, token{kind: "operator", value: char})
+			current++
+			continue
+		}
+
 		return nil, fmt.Errorf("unexpected character: %s at position %d", char, current)
 	}
 
@@ -104,6 +110,9 @@ type node struct {
 	kind       string
 	value      string
 	name       string
+	operator   string
+	left       *node
+	right      *node
 	callee     *node
 	expression *node
 	body       []node
@@ -149,6 +158,28 @@ func walk() (node, error) {
 	if token.kind == "boolean" {
 		pc++
 		return node{kind: "BooleanLiteral", value: token.value}, nil
+	}
+
+	if token.kind == "operator" {
+		pc++
+		operator := token.value
+
+		left, err := walk()
+		if err != nil {
+			return node{}, err
+		}
+
+		right, err := walk()
+		if err != nil {
+			return node{}, err
+		}
+
+		return node{
+			kind:     "BinaryExpression",
+			operator: operator,
+			left:     &left,
+			right:    &right,
+		}, nil
 	}
 
 	if token.kind == "paren" && token.value == "(" {
@@ -197,6 +228,9 @@ func traverseNode(n, p node, v visitor) {
 		traverseArray(n.body, n, v)
 	case "CallExpression":
 		traverseArray(n.params, n, v)
+	case "BinaryExpression":
+		traverseNode(*n.left, n, v)
+		traverseNode(*n.right, n, v)
 	}
 }
 
@@ -213,6 +247,22 @@ func transformer(a ast) ast {
 		},
 		"BooleanLiteral": func(n *node, p node) {
 			*p.context = append(*p.context, node{kind: "BooleanLiteral", value: n.value})
+		},
+		"BinaryExpression": func(n *node, p node) {
+			left := node{
+				kind: "BinaryExpression",
+				left: n.left,
+			}
+			right := node{
+				kind: "BinaryExpression",
+				right: n.right,
+			}
+			*p.context = append(*p.context, node{
+				kind:     "BinaryExpression",
+				operator: n.operator,
+				left:     &left,
+				right:    &right,
+			})
 		},
 		"CallExpression": func(n *node, p node) {
 			e := node{
@@ -264,6 +314,8 @@ func codeGenerator(n node) string {
 		return `"` + n.value + `"`
 	case "BooleanLiteral":
 		return n.value
+	case "BinaryExpression":
+		return codeGenerator(*n.left) + " " + n.operator + " " + codeGenerator(*n.right)
 	default:
 		log.Fatal("unknown node kind")
 		return ""
@@ -285,7 +337,7 @@ func compiler(input string) (string, error) {
 }
 
 func main() {
-	program := `(add "hello" (subtract 10 true))`
+	program := `(+ 5 (- 3 2))`
 	out, err := compiler(program)
 	if err != nil {
 		log.Fatalf("Compilation error: %v", err)
