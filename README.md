@@ -2,7 +2,7 @@
 - [ ] Add docs
 - [x] Support for More Data Types
 - [x] Error Handling
-- [x] Interactive REPL
+- [ ] Interactive REPL
 - [ ] Optimization Passes
 - [ ] Debugging Information
 - [ ] Extensible Parser
