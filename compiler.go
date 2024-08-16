@@ -259,12 +259,18 @@ func codeGenerator(n node) string {
  *   4. newAst => generator   => output
  */
 
-func compiler(input string) string {
-	tokens := tokenizer(input)
-	ast := parser(tokens)
+func compiler(input string) (string, error) {
+	tokens, err := tokenizer(input)
+	if err != nil {
+		return "", err
+	}
+	ast, err := parser(tokens)
+	if err != nil {
+		return "", err
+	}
 	nast := transformer(ast)
 	out := codeGenerator(node(nast))
-	return out
+	return out, nil
 }
 
 func main() {
