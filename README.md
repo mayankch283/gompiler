@@ -1,7 +1,7 @@
 - [x] Add tests
 - [ ] Add docs
-- [ ] Support for More Data Types
-- [ ] Error Handling
+- [x] Support for More Data Types
+- [x] Error Handling
 - [ ] Interactive REPL
 - [ ] Optimization Passes
 - [ ] Debugging Information
