@@ -234,3 +234,35 @@ func TestParserErrors(t *testing.T) {
 		})
 	}
 }
+
+
+func BenchmarkTokenizer(b *testing.B) {
+	input := "(add 10 (subtract 10 6))"
+	for n := 0; n < b.N; n++ {
+		tokenizer(input)
+	}
+}
+
+func BenchmarkParser(b *testing.B) {
+	tokens := []token{
+		{kind: "paren", value: "("},
+		{kind: "name", value: "add"},
+		{kind: "number", value: "10"},
+		{kind: "paren", value: "("},
+		{kind: "name", value: "subtract"},
+		{kind: "number", value: "10"},
+		{kind: "number", value: "6"},
+		{kind: "paren", value: ")"},
+		{kind: "paren", value: ")"},
+	}
+	for n := 0; n < b.N; n++ {
+		parser(tokens)
+	}
+}
+
+func BenchmarkCompiler(b *testing.B) {
+	input := "(add 10 (subtract 10 6))"
+	for n := 0; n < b.N; n++ {
+		compiler(input)
+	}
+}
