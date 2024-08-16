@@ -266,3 +266,42 @@ func BenchmarkCompiler(b *testing.B) {
 		compiler(input)
 	}
 }
+
+func TestOptimizer(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "Constant folding",
+			input:    "(+ 2 (+ 3 4))",
+			expected: "9;",
+		},
+		{
+			name:     "Dead code elimination",
+			input:    "(begin (+ 2 3) (- 5 1))",
+			expected: "4;",
+		},
+		{
+			name: "Function inlining",
+			input: `
+				(define double (x) (* x 2))
+				(double 5)
+			`,
+			expected: "*(5, 2);",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := compiler(tt.input)
+			if err != nil {
+				t.Fatalf("Compiler error: %v", err)
+			}
+			if result != tt.expected {
+				t.Errorf("Expected: %s, Got: %s", tt.expected, result)
+			}
+		})
+	}
+}
