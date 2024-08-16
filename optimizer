@@ -1,0 +1,30 @@
+package main
+
+import (
+	"fmt"
+	"strconv"
+)
+
+func optimize(ast ast) ast {
+	optimized := constantFolding(ast)
+	optimized = deadCodeElimination(optimized)
+	optimized = functionInlining(optimized)
+	return optimized
+}
+
+func constantFolding(a ast) ast {
+	traverser(a, visitor{
+		"CallExpression": func(n *node, p node) {
+			if isArithmeticOperator(n.name) {
+				if allParamsAreNumberLiterals(n.params) {
+					result := evaluateArithmeticExpression(n)
+					*n = node{
+						kind:  "NumberLiteral",
+						value: fmt.Sprintf("%v", result),
+					}
+				}
+			}
+		},
+	})
+	return a
+}
